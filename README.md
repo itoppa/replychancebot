@@ -1,50 +1,53 @@
-# CakePHP
+# リプライチャンスbot
 
-[![Latest Stable Version](https://poser.pugx.org/cakephp/cakephp/v/stable.svg)](https://packagist.org/packages/cakephp/cakephp)
-[![License](https://poser.pugx.org/cakephp/cakephp/license.svg)](https://packagist.org/packages/cakephp/cakephp)
-[![Bake Status](https://secure.travis-ci.org/cakephp/cakephp.png?branch=master)](http://travis-ci.org/cakephp/cakephp)
-[![Code consistency](http://squizlabs.github.io/PHP_CodeSniffer/analysis/cakephp/cakephp/grade.svg)](http://squizlabs.github.io/PHP_CodeSniffer/analysis/cakephp/cakephp/)
-
-[![CakePHP](http://cakephp.org/img/cake-logo.png)](http://www.cakephp.org)
-
-CakePHP is a rapid development framework for PHP which uses commonly known design patterns like Active Record, Association Data Mapping, Front Controller and MVC.
-Our primary goal is to provide a structured framework that enables PHP users at all levels to rapidly develop robust web applications, without any loss to flexibility.
+## リプライチャンスとは
 
 
-## Some Handy Links
 
-[CakePHP](http://www.cakephp.org) - The rapid development PHP framework
+## 使用シーン
 
-[CookBook](http://book.cakephp.org) - THE CakePHP user documentation; start learning here!
+任意の女性声優さんのTwitterにて不定期でファンに向けてリプライをするときに、いち早く知ってリプライを貰いたい。
 
-[API](http://api.cakephp.org) - A reference to CakePHP's classes
-
-[Plugins](http://plugins.cakephp.org/) - A repository of extensions to the framework
-
-[The Bakery](http://bakery.cakephp.org) - Tips, tutorials and articles
-
-[Community Center](http://community.cakephp.org) - A source for everything community related
-
-[Training](http://training.cakephp.org) - Join a live session and get skilled with the framework
-
-[CakeFest](http://cakefest.org) - Don't miss our annual CakePHP conference
-
-[Cake Software Foundation](http://cakefoundation.org) - Promoting development related to CakePHP
+## 仕様
 
 
-## Get Support!
 
-[#cakephp](http://webchat.freenode.net/?channels=#cakephp) on irc.freenode.net - Come chat with us, we have cake
+## 開発環境構築
 
-[Google Group](https://groups.google.com/group/cake-php) - Community mailing list and forum
+**事前にインストールが必要なもの**
 
-[GitHub Issues](https://github.com/cakephp/cakephp/issues) - Got issues? Please tell us!
+* Apache等のWebサーバ
+* MySQL等のデータベースサーバ
+* PHP >= 5.3.0
+  
+**本アプリケーションのバージョン**
 
-[Roadmaps](https://github.com/cakephp/cakephp/wiki#roadmaps) - Want to contribute? Get involved!
+* CakePHP 2.7.8
+  
+**インストール手順**
 
+git clone https://github.com/itoppa/replychancebot.git  
+cd replychancebot  
+chmod -R 777 app/tmp  
+mv app/Config/core.php.default app/Config/core.php  
+mv app/Config/database.php.default app/Config/database.php  
+vim app/Config/core.php  
+vim app/Config/database.php  
+mysql -u XXX -h XXX -p XXX < app/sql/create_table.sql  
+  
+「core.php」「database.php」は以下URLを参考に設定してください。
 
-## Contributing
+* <http://book.cakephp.org/2.0/ja/getting-started.html>
+* <https://dev.twitter.com/oauth>
+  
+また「core.php」に以下の通りTwitter OAuthを設定してください。  
+  
+> Configure::write('twitter_oauth', ['consumer_key' => 'XXX',  
+>                                    'consumer_secret' => 'XXX',  
+>                                    'oauth_token' => 'XXX',  
+>                                    'oauth_token_secret' => 'XXX']);  
 
-[CONTRIBUTING.md](CONTRIBUTING.md) - Quick pointers for contributing to the CakePHP project
+## 保留事項
 
-[CookBook "Contributing" Section (2.x)](http://book.cakephp.org/2.0/en/contributing.html) [(3.0)](http://book.cakephp.org/3.0/en/contributing.html) - Version-specific details about contributing to the project
+* Twitter APIの仕様に依存します。特にAPIコール回数には注意してください。
+
