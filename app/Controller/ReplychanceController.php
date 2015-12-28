@@ -76,11 +76,9 @@ class ReplychanceController extends AppController {
 				$twitterAccount['ReplyChance']['count'] <= $count
 			) {
 				// Twitter投稿
-/*
 				$twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/update.json',
 				                            'POST',
 				                            ['status' => sprintf('%sはリプライチャンス中です。', $twitterAccount['TwitterAccount']['screen_name'])]);
-*/
 
 				// リプライチャンスの日時を更新
 				$data = ['latest_datetime' => date('Y-m-d H:i:00')];
