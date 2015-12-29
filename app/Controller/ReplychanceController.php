@@ -49,8 +49,12 @@ class ReplychanceController extends AppController {
 			$toTwitterAccountIds = Set::combine($this->TwitterFollow->find('all', ['conditions' => ['from_twitter_account_id' => $twitterAccount['TwitterAccount']['id']]]), '{n}.TwitterFollow.id', '{n}.TwitterFollow.to_twitter_account_id');
 			foreach ($result as $v) {
 				// リラプイではない場合
+				// 自分自身のリプライの場合
 				// フォロー内のリプライの場合
-				if (!isset($v->in_reply_to_user_id) || in_array($v->in_reply_to_user_id, $toTwitterAccountIds)) {
+				if (!isset($v->in_reply_to_user_id) ||
+				    $v->in_reply_to_user_id == $twitterAccount['TwitterAccount']['id'] ||
+				    in_array($v->in_reply_to_user_id, $toTwitterAccountIds)
+				) {
 					continue;
 				}
 
@@ -59,6 +63,10 @@ class ReplychanceController extends AppController {
 					break;
 				}
 				$count++;
+
+				$this->log(sprintf('%s replies to %s(%s).', $twitterAccount['TwitterAccount']['screen_name'],
+				                                            $v->in_reply_to_screen_name,
+				                                            $v->in_reply_to_user_id), 'debug');
 			}
 
 			// 指定の期間ごとのリプライ数を保存
@@ -79,6 +87,12 @@ class ReplychanceController extends AppController {
 				$twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/update.json',
 				                            'POST',
 				                            ['status' => sprintf('%sはリプライチャンス中です。', $twitterAccount['TwitterAccount']['screen_name'])]);
+
+				// Google Cloud Messaging
+				$shell = APP . 'webroot' . DS . 'files' . DS . 'replychance_cron.sh';
+				if (file_exists($shell)) {
+					exec('bash ' . $shell);
+				}
 
 				// リプライチャンスの日時を更新
 				$data = ['latest_datetime' => date('Y-m-d H:i:00')];

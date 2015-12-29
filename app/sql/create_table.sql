@@ -34,6 +34,13 @@ CREATE TABLE `reply_chance_logs` (
   `end_datetime` datetime NOT NULL,
   `count` int(10) unsigned DEFAULT '0',
   `created` datetime NOT NULL,
-  `modified` datetime NOT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `twitter_account_id_idx` (`twitter_account_id`),
+  KEY `start_datetime_idx` (`start_datetime`),
+  KEY `end_datetime_idx` (`end_datetime`),
+  KEY `count_idx` (`count`),
+  KEY `twitter_account_id_count_idx` (`twitter_account_id`,`count`),
+  KEY `count_twitter_account_id_idx` (`count`,`twitter_account_id`),
+  KEY `start_datetime_end_datetime_idx` (`start_datetime`,`end_datetime`),
+  KEY `start_datetime_end_datetime_count_idx` (`start_datetime`,`end_datetime`,`count`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
