@@ -10,7 +10,11 @@ class TwitterfollowController extends AppController {
 		$this->autoRender = false;
 
 		// 対象データ取得
-		$twitterAccounts = $this->TwitterAccount->find('all', ['conditions' => ['TwitterAccount.status' => 1]]);
+		$conditions = ['TwitterAccount.status' => 1];
+		if (isset($this->request->query['screen_name'])) {
+			$conditions['TwitterAccount.screen_name'] = $this->request->query['screen_name'];
+		}
+		$twitterAccounts = $this->TwitterAccount->find('all', ['conditions' => $conditions]);
 
 		$twitterOAuth = new TwitterOAuth(Configure::read('twitter_oauth.consumer_key'),
 		                                 Configure::read('twitter_oauth.consumer_secret'),
@@ -37,7 +41,10 @@ class TwitterfollowController extends AppController {
 			}
 
 			$twitterFollows = $result->ids;
-			$databaseFollows = Set::combine($this->TwitterFollow->find('all', ['conditions' => ['from_twitter_account_id' => $twitterAccountId]]), '{n}.TwitterFollow.id', '{n}.TwitterFollow.to_twitter_account_id');
+			$databaseFollows = Set::combine($this->TwitterFollow->find('all',
+			                                                           ['conditions' => ['from_twitter_account_id' => $twitterAccountId]]),
+			                                '{n}.TwitterFollow.id',
+			                                '{n}.TwitterFollow.to_twitter_account_id');
 			$createFollows = array_diff($twitterFollows, $databaseFollows);
 			$deleteFollows = array_diff($databaseFollows, $twitterFollows);
 
