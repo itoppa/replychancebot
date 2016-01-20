@@ -6,6 +6,24 @@ class ReplychanceController extends AppController {
 
 	public $uses = ['TwitterAccount', 'TwitterFollow', 'ReplyChance', 'ReplyChanceLog'];
 
+	public function index() {
+		// 対象データ取得
+		$conditions = [];
+		if (isset($this->request->query['is_count'])) {
+			$conditions['ReplyChanceLog.count >'] = 0;
+		}
+		$this->TwitterAccount->bindModel(['hasMany' => ['ReplyChanceLog' => ['conditions' => $conditions,
+		                                                                     'order' => ['ReplyChanceLog.id DESC'],
+		                                                                     'limit' => 10]]]);
+		$conditions = ['TwitterAccount.status' => 1];
+		if (isset($this->request->query['screen_name'])) {
+			$conditions['TwitterAccount.screen_name'] = $this->request->query['screen_name'];
+		}
+		$twitterAccounts = $this->TwitterAccount->find('all', ['conditions' => $conditions]);
+
+		$this->set('twitterAccounts', $twitterAccounts);
+	}
+
 	public function cron() {
 		$this->autoRender = false;
 
@@ -32,6 +50,7 @@ class ReplychanceController extends AppController {
 				$result = $twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/user_timeline.json',
 				                                      'GET',
 				                                      $parameters);
+				sleep(1);
 
 				$result = json_decode($result);
 				if (isset($result->errors)) {
@@ -42,18 +61,31 @@ class ReplychanceController extends AppController {
 				throw new InternalErrorException($e->getMessage());
 			}
 
+			$logs = [];
+
 			// 指定の期間内のリプライ数をカウント
 			$count = 0;
 			$start = strtotime(date('Y-m-d H:i:00', strtotime(sprintf('-%d minutes', $twitterAccount['ReplyChance']['term']))));
 			$end = strtotime(date('Y-m-d H:i:59', strtotime('-1 minutes')));
-			$toTwitterAccountIds = Set::combine($this->TwitterFollow->find('all', ['conditions' => ['from_twitter_account_id' => $twitterAccount['TwitterAccount']['id']]]), '{n}.TwitterFollow.id', '{n}.TwitterFollow.to_twitter_account_id');
+			$toTwitterAccountIds = Set::combine($this->TwitterFollow->find('all',
+			                                                               ['conditions' => ['from_twitter_account_id' => $twitterAccount['TwitterAccount']['id']]]),
+			                                    '{n}.TwitterFollow.id',
+			                                    '{n}.TwitterFollow.to_twitter_account_id');
 			foreach ($result as $v) {
+				// 通常/引用リプライから対象ユーザIDを取得
+				$inReplyToUserId = 0;
+				if (isset($v->in_reply_to_user_id)) {
+					$inReplyToUserId = $v->in_reply_to_user_id;
+				} else if (isset($v->quoted_status->user->id)) {
+					$inReplyToUserId = $v->quoted_status->user->id;
+				}
+
 				// リラプイではない場合
 				// 自分自身のリプライの場合
 				// フォロー内のリプライの場合
-				if (!isset($v->in_reply_to_user_id) ||
-				    $v->in_reply_to_user_id == $twitterAccount['TwitterAccount']['id'] ||
-				    in_array($v->in_reply_to_user_id, $toTwitterAccountIds)
+				if ($inReplyToUserId === 0 ||
+				    $inReplyToUserId == $twitterAccount['TwitterAccount']['id'] ||
+				    in_array($inReplyToUserId, $toTwitterAccountIds)
 				) {
 					continue;
 				}
@@ -64,9 +96,10 @@ class ReplychanceController extends AppController {
 				}
 				$count++;
 
-				$this->log(sprintf('%s replies to %s(%s).', $twitterAccount['TwitterAccount']['screen_name'],
-				                                            $v->in_reply_to_screen_name,
-				                                            $v->in_reply_to_user_id), 'debug');
+				$logs[] = sprintf('%s replies to %s(%s) at %s.', $twitterAccount['TwitterAccount']['screen_name'],
+				                                                 (isset($v->in_reply_to_screen_name)) ? $v->in_reply_to_screen_name : $v->quoted_status->user->screen_name,
+				                                                 $inReplyToUserId,
+				                                                 date('Y-m-d H:i:s', strtotime($v->created_at)));
 			}
 
 			// 指定の期間ごとのリプライ数を保存
@@ -99,7 +132,14 @@ class ReplychanceController extends AppController {
 				$this->ReplyChance->id = $twitterAccount['ReplyChance']['id'];
 				$this->ReplyChance->save($data);
 
-				$this->log(sprintf('%s is being reply chance.', $twitterAccount['TwitterAccount']['screen_name']), 'debug');
+				$logs[] = sprintf('%s is being reply chance.', $twitterAccount['TwitterAccount']['screen_name']);
+			}
+
+			if (count($logs) > 0) {
+				$logs = array_reverse($logs);
+				foreach ($logs as $log) {
+					$this->log($log, 'debug');
+				}
 			}
 		}
 
