@@ -12,5 +12,7 @@ CakePHP 2
 /app/Config/database.php
 /vendors/*
 
+composer.lock
+Plugin/*
 /app/webroot/files/*
-
+/app/Controller/ScrapingkosatsuController.php
