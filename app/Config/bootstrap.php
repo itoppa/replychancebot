@@ -103,9 +103,13 @@ CakeLog::config('debug', array(
 	'engine' => 'File',
 	'types' => array('notice', 'info', 'debug'),
 	'file' => 'debug',
+	'size' => '1MB',
+	'rotate' => 100,
 ));
 CakeLog::config('error', array(
 	'engine' => 'File',
 	'types' => array('warning', 'error', 'critical', 'alert', 'emergency'),
 	'file' => 'error',
+	'size' => '1MB',
+	'rotate' => 100,
 ));

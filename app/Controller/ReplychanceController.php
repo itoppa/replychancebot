@@ -4,7 +4,7 @@ App::import('Vendor', 'twitteroauth', array('file' => 'twitteroauth' . DS . 'twi
 
 class ReplychanceController extends AppController {
 
-	public $uses = ['TwitterAccount', 'TwitterFollow', 'ReplyChance', 'ReplyChanceLog'];
+	public $uses = ['TwitterAccount', 'TwitterFollow', 'ReplyChance', 'ReplyChanceLog', 'PushNotification'];
 
 	public function index() {
 		// 対象データ取得
@@ -96,9 +96,10 @@ class ReplychanceController extends AppController {
 				}
 				$count++;
 
-				$logs[] = sprintf('%s replies to %s(%s) at %s.', $twitterAccount['TwitterAccount']['screen_name'],
+				$logs[] = sprintf('%s replies to %s(%s) "%s" at %s.', $twitterAccount['TwitterAccount']['screen_name'],
 				                                                 (isset($v->in_reply_to_screen_name)) ? $v->in_reply_to_screen_name : $v->quoted_status->user->screen_name,
 				                                                 $inReplyToUserId,
+				                                                 $this->_maskScreenName($v->text),
 				                                                 date('Y-m-d H:i:s', strtotime($v->created_at)));
 			}
 
@@ -116,15 +117,26 @@ class ReplychanceController extends AppController {
 				3600 <= (strtotime('now') - strtotime($twitterAccount['ReplyChance']['latest_datetime'])) &&
 				$twitterAccount['ReplyChance']['count'] <= $count
 			) {
-				// Twitter投稿
-				$twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/update.json',
-				                            'POST',
-				                            ['status' => sprintf('%sはリプライチャンス中です。', $twitterAccount['TwitterAccount']['screen_name'])]);
+				// リプライチャンスのプッシュ通知データを保存
+				$data = ['title' => 'リプライチャンス',
+				         'body' => sprintf('%sはリプライチャンス中です。', $twitterAccount['TwitterAccount']['screen_name'])];
+				$this->PushNotification->create();
+				$this->PushNotification->save($data);
 
 				// Google Cloud Messaging
 				$shell = APP . 'webroot' . DS . 'files' . DS . 'replychance_cron.sh';
 				if (file_exists($shell)) {
 					exec('bash ' . $shell);
+				}
+
+				// Twitter投稿
+				try {
+					$twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/update.json',
+					                            'POST',
+					                            ['status' => sprintf('%sはリプライチャンス中です。', $twitterAccount['TwitterAccount']['screen_name'])]);
+
+				} catch (Exception $e) {
+					throw new InternalErrorException($e->getMessage());
 				}
 
 				// リプライチャンスの日時を更新
@@ -143,6 +155,15 @@ class ReplychanceController extends AppController {
 			}
 		}
 
+	}
+
+	private function _maskScreenName($text) {
+		if (preg_match_all('/@\w+/', $text, $matches) > 0) {
+			foreach ($matches[0] as $match) {
+				$text = preg_replace('/'.$match.'/', str_pad('', (strlen($match)-1), '*'), $text);
+			}
+		}
+		return $text;
 	}
 
 }
