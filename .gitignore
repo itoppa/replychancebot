@@ -16,3 +16,6 @@ composer.lock
 Plugin/*
 /app/webroot/files/*
 /app/Controller/ScrapingkosatsuController.php
+/app/Controller/Kosatsu1Controller.php
+/app/View/Kosatsu1/*
+

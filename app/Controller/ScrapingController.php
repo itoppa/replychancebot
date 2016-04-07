@@ -57,7 +57,7 @@ class ScrapingController extends AppController {
 				try {
 					$twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/update.json',
 					                            'POST',
-					                            ['status' => sprintf('%s( %s ) is being updated(count=%s).', $scraping['Scraping']['name'], $targetUrl, count($insertHrefs))]);
+					                            ['status' => sprintf('%s( %s ) is being updated(count=%s) %s.', $scraping['Scraping']['name'], $targetUrl, count($insertHrefs), CakeText::uuid())]);
 
 				} catch (Exception $e) {
 					throw new InternalErrorException($e->getMessage());

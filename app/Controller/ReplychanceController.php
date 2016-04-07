@@ -9,12 +9,12 @@ class ReplychanceController extends AppController {
 	public function index() {
 		// 対象データ取得
 		$conditions = [];
-		if (isset($this->request->query['is_count'])) {
-			$conditions['ReplyChanceLog.count >'] = 0;
+		if (isset($this->request->query['count']) && preg_match('/^\d+$/', $this->request->query['count'])) {
+			$conditions['ReplyChanceLog.count >'] = $this->request->query['count'];
 		}
 		$this->TwitterAccount->bindModel(['hasMany' => ['ReplyChanceLog' => ['conditions' => $conditions,
 		                                                                     'order' => ['ReplyChanceLog.id DESC'],
-		                                                                     'limit' => 10]]]);
+		                                                                     'limit' => 20]]]);
 		$conditions = ['TwitterAccount.status' => 1];
 		if (isset($this->request->query['screen_name'])) {
 			$conditions['TwitterAccount.screen_name'] = $this->request->query['screen_name'];
@@ -122,6 +122,7 @@ class ReplychanceController extends AppController {
 				         'body' => sprintf('%sはリプライチャンス中です。', $twitterAccount['TwitterAccount']['screen_name'])];
 				$this->PushNotification->create();
 				$this->PushNotification->save($data);
+				sleep(1);
 
 				// Google Cloud Messaging
 				$shell = APP . 'webroot' . DS . 'files' . DS . 'replychance_cron.sh';
@@ -133,7 +134,7 @@ class ReplychanceController extends AppController {
 				try {
 					$twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/update.json',
 					                            'POST',
-					                            ['status' => sprintf('%sはリプライチャンス中です。', $twitterAccount['TwitterAccount']['screen_name'])]);
+					                            ['status' => sprintf('%sはリプライチャンス中です。 %s', $twitterAccount['TwitterAccount']['screen_name'], CakeText::uuid())]);
 
 				} catch (Exception $e) {
 					throw new InternalErrorException($e->getMessage());

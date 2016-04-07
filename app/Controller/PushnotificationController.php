@@ -5,6 +5,14 @@ class PushnotificationController extends AppController {
 
 	public $uses = ['PushNotification'];
 
+	public function index() {
+		// 対象データ取得
+		$pushNotifications = $this->PushNotification->find('all', ['order' => ['created DESC'],
+		                                                           'limit' => 20]);
+
+		$this->set('pushNotifications', $pushNotifications);
+	}
+
 	public function get() {
 		// 対象データ取得
 		$conditions = ['PushNotification.is_pushed' => 0];
