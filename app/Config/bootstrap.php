@@ -102,7 +102,7 @@ App::uses('CakeLog', 'Log');
 CakeLog::config('notice', array(
 	'engine' => 'File',
 	'types' => array('notice'),
-	'file' => 'debug',
+	'file' => 'notice',
 	'size' => '200KB',
 	'rotate' => 100,
 ));

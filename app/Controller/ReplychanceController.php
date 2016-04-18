@@ -24,7 +24,106 @@ class ReplychanceController extends AppController {
 		$this->set('twitterAccounts', $twitterAccounts);
 	}
 
+	public function execute() {
+		if (!in_array($this->request->clientIP(), Configure::read('exclude_front_ips'))) {
+			throw new NotFoundException();
+		}
+
+		// 対象データ取得
+		$conditions = ['TwitterAccount.status' => 1];
+		$twitterAccounts = $this->TwitterAccount->find('all', ['conditions' => $conditions]);
+
+		if (isset($this->request->query['screen_name'])) {
+			$twitterOAuth = new TwitterOAuth(Configure::read('twitter_oauth2.consumer_key'),
+			                                 Configure::read('twitter_oauth2.consumer_secret'),
+			                                 Configure::read('twitter_oauth2.oauth_token'),
+			                                 Configure::read('twitter_oauth2.oauth_token_secret'));
+
+			// Twitterデータ取得
+			try {
+				$parameters = ['count' => 200,
+				               'screen_name' => $this->request->query['screen_name'],
+				               'include_rts' => false];
+				$result = $twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/user_timeline.json',
+				                                      'GET',
+				                                      $parameters);
+
+				$result = json_decode($result);
+				if (isset($result->errors)) {
+					throw new Exception($result->errors[0]->message);
+				} else if (!is_array($result)) {
+					throw new Exception(sprintf('$result is %s.', gettype($result)));
+				}
+
+			} catch (Exception $e) {
+				throw new InternalErrorException($e->getMessage());
+			}
+
+			$twitterAccountIds = Set::combine($twitterAccounts, '{n}.TwitterAccount.id', '{n}.TwitterAccount.id');
+			$datas = [];
+			$replyDatas = [];
+			foreach ($result as $v) {
+				if (!isset($v->in_reply_to_user_id)) {
+					$datas[] = ['id' => $v->id_str,
+					            'text' => $v->text,
+					            'created_at' => $v->created_at];
+				}
+				if (
+				    $v->in_reply_to_user_id === Configure::read('twitter_id2') ||
+				    ($this->request->query['screen_name'] === Configure::read('twitter_screen_name2') && in_array($v->in_reply_to_user_id, $twitterAccountIds))
+				) {
+					$replyDatas[] = ['id' => $v->id_str,
+					                 'text' => $v->text,
+					                 'created_at' => $v->created_at];
+				}
+			}
+
+			$this->set('screenName', $this->request->query['screen_name']);
+			$this->set('datas', array_slice($datas, 0, 10));
+			$this->set('replyDatas', array_slice($replyDatas, 0, 5));
+		}
+
+		$this->set('twitterAccounts', $twitterAccounts);
+	}
+
+	public function statuses_update() {
+		if (!in_array($this->request->clientIP(), Configure::read('exclude_front_ips'))) {
+			throw new NotFoundException();
+		}
+
+		if (!$this->request->is('post')) {
+			throw new MethodNotAllowedException();
+		}
+
+		$twitterOAuth = new TwitterOAuth(Configure::read('twitter_oauth2.consumer_key'),
+		                                 Configure::read('twitter_oauth2.consumer_secret'),
+		                                 Configure::read('twitter_oauth2.oauth_token'),
+		                                 Configure::read('twitter_oauth2.oauth_token_secret'));
+
+		// Twitter投稿
+		try {
+			$parameters = ['status' => sprintf('@%s %s', $this->request->data('t_screen_name'), $this->request->data('t_text'))];
+			if ($this->request->data('t_id')) {
+				$parameters['in_reply_to_status_id'] = $this->request->data('t_id');
+			}
+			$twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/update.json',
+			                            'POST',
+			                            $parameters);
+
+			$this->log($parameters, 'info');
+
+		} catch (Exception $e) {
+			throw new InternalErrorException($e->getMessage());
+		}
+
+		$this->redirect(['controller' => 'replychance', 'action' => 'execute', '?' => ['screen_name' => $this->request->data('t_screen_name')]]);
+	}
+
 	public function cron() {
+		if ($this->request->clientIP() !== Configure::read('global_ip')) {
+			throw new ForbiddenException();
+		}
+
 		$this->autoRender = false;
 
 		// 対象データ取得
@@ -55,6 +154,8 @@ class ReplychanceController extends AppController {
 				$result = json_decode($result);
 				if (isset($result->errors)) {
 					throw new Exception($result->errors[0]->message);
+				} else if (!is_array($result)) {
+					throw new Exception(sprintf('$result is %s.', gettype($result)));
 				}
 
 			} catch (Exception $e) {
