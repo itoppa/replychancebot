@@ -197,11 +197,28 @@ class ReplychanceController extends AppController {
 				}
 				$count++;
 
-				$logs[] = sprintf('%s replies to %s(%s) "%s" at %s.', $twitterAccount['TwitterAccount']['screen_name'],
-				                                                 (isset($v->in_reply_to_screen_name)) ? $v->in_reply_to_screen_name : $v->quoted_status->user->screen_name,
-				                                                 $inReplyToUserId,
-				                                                 $this->_maskScreenName($v->text),
-				                                                 date('Y-m-d H:i:s', strtotime($v->created_at)));
+				// Twitterデータ取得
+				try {
+					$parameters = ['id' => $v->in_reply_to_status_id_str];
+					$tweet = $twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/show.json',
+					                                     'GET',
+					                                     $parameters);
+
+					$tweet = json_decode($tweet);
+					if (isset($tweet->errors)) {
+						throw new Exception($tweet->errors[0]->message);
+					}
+
+				} catch (Exception $e) {
+					throw new InternalErrorException($e->getMessage());
+				}
+
+				$logs[] = sprintf('%s replies to %s(%s) "%s" | "%s" at %s.', $twitterAccount['TwitterAccount']['screen_name'],
+				                                                             (isset($v->in_reply_to_screen_name)) ? $v->in_reply_to_screen_name : $v->quoted_status->user->screen_name,
+				                                                             $inReplyToUserId,
+				                                                             $this->_maskScreenName(str_replace(array("\r\n", "\r", "\n"), ' ', $v->text)),
+				                                                             $this->_maskScreenName(str_replace(array("\r\n", "\r", "\n"), ' ', $tweet->text)),
+				                                                             date('Y-m-d H:i:s', strtotime($v->created_at)));
 			}
 
 			// 指定の期間ごとのリプライ数を保存
