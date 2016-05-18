@@ -198,6 +198,7 @@ class ReplychanceController extends AppController {
 				$count++;
 
 				// Twitterデータ取得
+				$tweetText = '';
 				try {
 					$parameters = ['id' => $v->in_reply_to_status_id_str];
 					$tweet = $twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/show.json',
@@ -208,16 +209,18 @@ class ReplychanceController extends AppController {
 					if (isset($tweet->errors)) {
 						throw new Exception($tweet->errors[0]->message);
 					}
+					$tweetText = $tweet->text;
 
 				} catch (Exception $e) {
-					throw new InternalErrorException($e->getMessage());
+					//throw new InternalErrorException($e->getMessage());
+					$this->log(sprintf('%s (%s).', $e->getMessage(), $v->in_reply_to_status_id_str), 'info');
 				}
 
 				$logs[] = sprintf('%s replies to %s(%s) "%s" | "%s" at %s.', $twitterAccount['TwitterAccount']['screen_name'],
 				                                                             (isset($v->in_reply_to_screen_name)) ? $v->in_reply_to_screen_name : $v->quoted_status->user->screen_name,
 				                                                             $inReplyToUserId,
 				                                                             $this->_maskScreenName(str_replace(array("\r\n", "\r", "\n"), ' ', $v->text)),
-				                                                             $this->_maskScreenName(str_replace(array("\r\n", "\r", "\n"), ' ', $tweet->text)),
+				                                                             $this->_maskScreenName(str_replace(array("\r\n", "\r", "\n"), ' ', $tweetText)),
 				                                                             date('Y-m-d H:i:s', strtotime($v->created_at)));
 			}
 
@@ -269,7 +272,7 @@ class ReplychanceController extends AppController {
 			if (count($logs) > 0) {
 				$logs = array_reverse($logs);
 				foreach ($logs as $log) {
-					$this->log($log, 'debug');
+					$this->log($log, sprintf('reply_%s', $twitterAccount['TwitterAccount']['screen_name']));
 				}
 			}
 		}

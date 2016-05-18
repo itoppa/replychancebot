@@ -16,7 +16,8 @@ class PushnotificationController extends AppController {
 	public function get() {
 		// 対象データ取得
 		$conditions = ['PushNotification.is_pushed' => 0];
-		$pushNotification = $this->PushNotification->find('first', ['conditions' => $conditions]);
+		$pushNotification = $this->PushNotification->find('first', ['conditions' => $conditions,
+		                                                            'order' => ['PushNotification.id DESC'],]);
 
 		if ($pushNotification) {
 			// プッシュ通知フラグを更新

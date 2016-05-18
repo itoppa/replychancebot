@@ -120,6 +120,27 @@ CakeLog::config('debug', array(
 	'size' => '200KB',
 	'rotate' => 100,
 ));
+CakeLog::config('reply_mina_rio', array(
+	'engine' => 'File',
+	'types' => array('reply_mina_rio'),
+	'file' => 'reply_mina_rio',
+	'size' => '200KB',
+	'rotate' => 100,
+));
+CakeLog::config('reply_shinomiyayuri', array(
+	'engine' => 'File',
+	'types' => array('reply_shinomiyayuri'),
+	'file' => 'reply_shinomiyayuri',
+	'size' => '200KB',
+	'rotate' => 100,
+));
+CakeLog::config('reply_rukaKANAE', array(
+	'engine' => 'File',
+	'types' => array('reply_rukaKANAE'),
+	'file' => 'reply_rukaKANAE',
+	'size' => '200KB',
+	'rotate' => 100,
+));
 CakeLog::config('error', array(
 	'engine' => 'File',
 	'types' => array('warning', 'error', 'critical', 'alert', 'emergency'),

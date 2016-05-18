@@ -15,7 +15,10 @@ CakePHP 2
 composer.lock
 Plugin/*
 /app/webroot/files/*
+/app/Config/bootstrap.php
 /app/Controller/ScrapingkosatsuController.php
 /app/Controller/Kosatsu1Controller.php
+/app/Controller/Kosatsu2Controller.php
 /app/View/Kosatsu1/*
+/app/View/Kosatsu2/*
 
