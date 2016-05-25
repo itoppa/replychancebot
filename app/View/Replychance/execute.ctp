@@ -3,6 +3,7 @@
   <?php foreach ($twitterAccounts as $twitterAccount) : ?>
   <li><a href="/app2/replychance/execute?screen_name=<?php echo ($twitterAccount['TwitterAccount']['screen_name']); ?>"><?php echo ($twitterAccount['TwitterAccount']['screen_name']); ?></a></li>
   <?php endforeach; ?>
+  <li><a href="/app2/replychance/execute?screen_name=<?php echo $twitterScreenName2; ?>"><?php echo $twitterScreenName2; ?></a></li>
 </ul>
 <?php else: ?>
   <p><?php echo $screenName; ?></p>

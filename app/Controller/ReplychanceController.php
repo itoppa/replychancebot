@@ -84,6 +84,7 @@ class ReplychanceController extends AppController {
 		}
 
 		$this->set('twitterAccounts', $twitterAccounts);
+		$this->set('twitterScreenName2', Configure::read('twitter_screen_name2'));
 	}
 
 	public function statuses_update() {
@@ -102,7 +103,11 @@ class ReplychanceController extends AppController {
 
 		// Twitter投稿
 		try {
-			$parameters = ['status' => sprintf('@%s %s', $this->request->data('t_screen_name'), $this->request->data('t_text'))];
+			if ($this->request->data('t_screen_name') != Configure::read('twitter_screen_name2')) {
+				$parameters = ['status' => sprintf('@%s %s', $this->request->data('t_screen_name'), $this->request->data('t_text'))];
+			} else {
+				$parameters = ['status' => $this->request->data('t_text')];
+			}
 			if ($this->request->data('t_id')) {
 				$parameters['in_reply_to_status_id'] = $this->request->data('t_id');
 			}
