@@ -110,7 +110,7 @@ CakeLog::config('info', array(
 	'engine' => 'File',
 	'types' => array('info'),
 	'file' => 'info',
-	'size' => '200KB',
+	'size' => '500KB',
 	'rotate' => 100,
 ));
 CakeLog::config('debug', array(

@@ -124,6 +124,40 @@ class ReplychanceController extends AppController {
 		$this->redirect(['controller' => 'replychance', 'action' => 'execute', '?' => ['screen_name' => $this->request->data('t_screen_name')]]);
 	}
 
+	public function mentions_timeline() {
+		if (!in_array($this->request->clientIP(), Configure::read('exclude_front_ips'))) {
+			throw new NotFoundException();
+		}
+
+		// 対象データ取得
+		$conditions = ['TwitterAccount.status' => 1];
+		$twitterAccountIds = Set::combine($this->TwitterAccount->find('all', ['conditions' => $conditions]), '{n}.TwitterAccount.id', '{n}.TwitterAccount.id');
+
+		$twitterOAuth = new TwitterOAuth(Configure::read('twitter_oauth2.consumer_key'),
+		                                 Configure::read('twitter_oauth2.consumer_secret'),
+		                                 Configure::read('twitter_oauth2.oauth_token'),
+		                                 Configure::read('twitter_oauth2.oauth_token_secret'));
+
+		// Twitter投稿
+		try {
+			$parameters = ['count' => 200];
+			$result = $twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/mentions_timeline.json',
+			                                      'GET',
+			                                      $parameters);
+
+			$result = json_decode($result);
+			if (isset($result->errors)) {
+				throw new Exception($result->errors[0]->message);
+			}
+
+		} catch (Exception $e) {
+			throw new InternalErrorException($e->getMessage());
+		}
+
+		$this->set('twitterAccountIds', $twitterAccountIds);
+		$this->set('result', $result);
+	}
+
 	public function cron() {
 		if ($this->request->clientIP() !== Configure::read('global_ip')) {
 			throw new ForbiddenException();
