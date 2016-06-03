@@ -182,15 +182,16 @@ class ReplychanceController extends AppController {
 
 			// Twitterデータ取得
 			try {
-				$parameters = ['count' => 200,
+				$parameters = ['count' => 50,
 				               'screen_name' => $twitterAccount['TwitterAccount']['screen_name'],
 				               'include_rts' => false];
 				$result = $twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/user_timeline.json',
 				                                      'GET',
 				                                      $parameters);
-				sleep(1);
+				sleep(5);
 
 				$result = json_decode($result);
+				$this->log(sprintf('$result(screen_name=%s, gettype=%s, count=%s).', $twitterAccount['TwitterAccount']['screen_name'], gettype($result), count($result)), 'info');
 				if (isset($result->errors)) {
 					throw new Exception($result->errors[0]->message);
 				} else if (!is_array($result)) {
