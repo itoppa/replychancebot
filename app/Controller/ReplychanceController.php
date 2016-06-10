@@ -175,32 +175,45 @@ class ReplychanceController extends AppController {
 		                                 Configure::read('twitter_oauth.oauth_token_secret'));
 
 		foreach ($twitterAccounts as $twitterAccount) {
+			unset($result);
+
 			// 指定の期間ごとに実行
 			if (((int)date('i') % $twitterAccount['ReplyChance']['term']) !== 0) {
 				continue;
 			}
 
 			// Twitterデータ取得
-			try {
-				$parameters = ['count' => 50,
-				               'screen_name' => $twitterAccount['TwitterAccount']['screen_name'],
-				               'include_rts' => false];
-				$result = $twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/user_timeline.json',
-				                                      'GET',
-				                                      $parameters);
-				sleep(5);
+			$count = 0;
+			do {
+				$count++;
 
-				$result = json_decode($result);
-				$this->log(sprintf('$result(screen_name=%s, gettype=%s, count=%s).', $twitterAccount['TwitterAccount']['screen_name'], gettype($result), count($result)), 'info');
-				if (isset($result->errors)) {
-					throw new Exception($result->errors[0]->message);
-				} else if (!is_array($result)) {
-					throw new Exception(sprintf('$result is %s.', gettype($result)));
+				try {
+					$parameters = ['count' => 50,
+					               'screen_name' => $twitterAccount['TwitterAccount']['screen_name'],
+					               'include_rts' => false];
+					$result = $twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/user_timeline.json',
+					                                      'GET',
+					                                      $parameters);
+					sleep(5);
+
+					$result = json_decode($result);
+					if (isset($result->errors)) {
+						throw new Exception($result->errors[0]->message);
+					} else if (!is_array($result)) {
+						throw new Exception(sprintf('$result is %s.', gettype($result)));
+					}
+
+				} catch (Exception $e) {
+					if (!preg_match('/No status found with that ID/', $e->getMessage())) {
+						throw new InternalErrorException($e->getMessage());
+					}
+					$this->log($e->getMessage(), 'info');
+
+				} finally {
+					$this->log(sprintf('$result(screen_name=%s, gettype=%s, count=%s).', $twitterAccount['TwitterAccount']['screen_name'], gettype($result), count($result)), 'info');
 				}
 
-			} catch (Exception $e) {
-				throw new InternalErrorException($e->getMessage());
-			}
+			} while (!isset($result) && $count < 5);
 
 			$logs = [];
 
