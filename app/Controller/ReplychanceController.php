@@ -204,10 +204,11 @@ class ReplychanceController extends AppController {
 					}
 
 				} catch (Exception $e) {
-					if (!preg_match('/No status found with that ID/', $e->getMessage())) {
+					if (!preg_match('/(No status found with that ID|Over capacity)/', $e->getMessage())) {
 						throw new InternalErrorException($e->getMessage());
 					}
 					$this->log($e->getMessage(), 'info');
+					unset($result);
 
 				} finally {
 					$this->log(sprintf('$result(screen_name=%s, gettype=%s, count=%s).', $twitterAccount['TwitterAccount']['screen_name'], gettype($result), count($result)), 'info');
@@ -253,7 +254,15 @@ class ReplychanceController extends AppController {
 				// Twitterデータ取得
 				$tweetText = '';
 				try {
-					$parameters = ['id' => $v->in_reply_to_status_id_str];
+					// 通常/引用リプライから対象IDを取得
+					$inReplyToStatusId = 0;
+					if (isset($v->in_reply_to_status_id_str)) {
+						$inReplyToStatusId = $v->in_reply_to_status_id_str;
+					} else if ($v->quoted_status->id_str) {
+						$inReplyToStatusId = $v->quoted_status->id_str;
+					}
+
+					$parameters = ['id' => $inReplyToStatusId];
 					$tweet = $twitterOAuth->OAuthRequest('https://api.twitter.com/1.1/statuses/show.json',
 					                                     'GET',
 					                                     $parameters);
@@ -266,7 +275,7 @@ class ReplychanceController extends AppController {
 
 				} catch (Exception $e) {
 					//throw new InternalErrorException($e->getMessage());
-					$this->log(sprintf('%s (%s).', $e->getMessage(), $v->in_reply_to_status_id_str), 'info');
+					$this->log(sprintf('%s (%s).', $e->getMessage(), $inReplyToStatusId), 'info');
 				}
 
 				$logs[] = sprintf('%s replies to %s(%s) "%s" | "%s" at %s.', $twitterAccount['TwitterAccount']['screen_name'],
