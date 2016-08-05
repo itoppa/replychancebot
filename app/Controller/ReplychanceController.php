@@ -4,9 +4,16 @@ App::import('Vendor', 'twitteroauth', array('file' => 'twitteroauth' . DS . 'twi
 
 class ReplychanceController extends AppController {
 
-	public $uses = ['TwitterAccount', 'TwitterFollow', 'ReplyChance', 'ReplyChanceLog', 'PushNotification'];
+	public $uses = ['Tweet', 'TwitterAccount', 'TwitterFollow', 'ReplyChance', 'ReplyChanceLog', 'PushNotification'];
 
 	public function index() {
+		if (
+		    !in_array($this->request->clientIP(), Configure::read('exclude_front_ips')) &&
+		    strpos($this->request->header('User-Agent'), Configure::read('exclude_user_agent')) === false
+		) {
+			throw new ForbiddenException();
+		}
+
 		// 対象データ取得
 		$conditions = [];
 		if (isset($this->request->query['count']) && preg_match('/^\d+$/', $this->request->query['count'])) {
@@ -22,6 +29,72 @@ class ReplychanceController extends AppController {
 		$twitterAccounts = $this->TwitterAccount->find('all', ['conditions' => $conditions]);
 
 		$this->set('twitterAccounts', $twitterAccounts);
+	}
+
+	public function performance() {
+		if (
+		    !in_array($this->request->clientIP(), Configure::read('exclude_front_ips')) &&
+		    strpos($this->request->header('User-Agent'), Configure::read('exclude_user_agent')) === false
+		) {
+			throw new ForbiddenException();
+		}
+
+		// 対象データ取得(Twitterアカウント)
+		$conditions = ['TwitterAccount.status' => 1];
+		if (isset($this->request->query['screen_name'])) {
+			$conditions['TwitterAccount.screen_name'] = $this->request->query['screen_name'];
+		}
+		$twitterAccounts = $this->TwitterAccount->find('all', ['conditions' => $conditions]);
+
+		// 対象データ取得(receive)
+		$twitterAccountIds = Set::combine($twitterAccounts, '{n}.TwitterAccount.id', '{n}.TwitterAccount.id');
+		$conditions = ['user_id' => $twitterAccountIds,
+		               'in_reply_to_user_id' => Configure::read('twitter_id2')];
+		$receiveTweets = $this->Tweet->find('all', ['fields' => ['user_id',
+		                                                         'screen_name',
+		                                                         'DATE_FORMAT(created_at, "%H") AS hour',
+		                                                         'COUNT(*) AS count'],
+		                                             'conditions' => $conditions,
+		                                             'group' => ['user_id', 'DATE_FORMAT(created_at, "%H")']]);
+		$receiveTweets = Set::combine($receiveTweets, '{n}.0.hour', '{n}.0.count', '{n}.Tweet.user_id');
+
+		// 対象データ取得(send)
+		$conditions = ['user_id' => Configure::read('twitter_id2'),
+		               'in_reply_to_user_id' => $twitterAccountIds];
+		$sendTweets = $this->Tweet->find('all', ['fields' => ['in_reply_to_user_id',
+		                                                      'in_reply_to_screen_name',
+		                                                      'DATE_FORMAT(created_at, "%H") AS hour',
+		                                                      'COUNT(*) AS count'],
+		                                         'conditions' => $conditions,
+		                                         'group' => ['in_reply_to_user_id', 'DATE_FORMAT(created_at, "%H")']]);
+		$sendTweets = Set::combine($sendTweets, '{n}.0.hour', '{n}.0.count', '{n}.Tweet.in_reply_to_user_id');
+
+		// 対象データ取得(percent)
+		foreach ($twitterAccountIds as $twitterAccountId) {
+			for ($i=0; $i<24; $i++) {
+				$hour = sprintf('%02d', $i);
+				$conditions = ['user_id' => Configure::read('twitter_id2'),
+				               'in_reply_to_user_id' => $twitterAccountId,
+				               'DATE_FORMAT(created_at, "%H")' => $hour];
+				$sendTweetStatusIds = $this->Tweet->find('all', ['fields' => ['status_id',
+				                                                              'DATE_FORMAT(created_at, "%H") AS hour'],
+				                                                 'conditions' => $conditions]);
+				$sendTweetStatusIds = Set::combine($sendTweetStatusIds, '{n}.Tweet.status_id', '{n}.Tweet.status_id', '{n}.0.hour');
+
+				if (isset($sendTweetStatusIds[$hour])) {
+					$conditions = ['user_id' => $twitterAccountId,
+					               'in_reply_to_user_id' => Configure::read('twitter_id2'),
+					               'in_reply_to_status_id' => $sendTweetStatusIds[$hour]];
+					$count = $this->Tweet->find('count', ['conditions' => $conditions]); 
+					$percents[$twitterAccountId][$hour] = (int)round($count / (int)$sendTweets[$twitterAccountId][$hour] * 100, 0);
+				}
+			}
+		}
+
+		$this->set('twitterAccounts', $twitterAccounts);
+		$this->set('receiveTweets', $receiveTweets);
+		$this->set('sendTweets', $sendTweets);
+		$this->set('percents', $percents);
 	}
 
 	public function execute() {
